@@ -5,25 +5,25 @@ id_pattern = re.compile(r'^.\d+$')
 
 class Config(object):
     # pyro client config
-    API_ID    = os.environ.get("API_ID", "")
-    API_HASH  = os.environ.get("API_HASH", "")
-    BOT_TOKEN = os.environ.get("BOT_TOKEN", "") 
+    API_ID    = os.environ.get("API_ID", "21661450")
+    API_HASH  = os.environ.get("API_HASH", "79612bc71908f95372808520a7eeee74")
+    BOT_TOKEN = os.environ.get("BOT_TOKEN", "7463606692:AAFKceJNgKeY2x01NsgRTFok0ifynPkpGXQ") 
    
     # database config
-    DB_NAME = os.environ.get("DB_NAME","")     
-    DB_URL  = os.environ.get("DB_URL","")
+    DB_NAME = os.environ.get("DB_NAME","Cluster0")     
+    DB_URL  = os.environ.get("DB_URL","mongodb+srv://MadhanBlastz:N0password@cluster0.4usvnqj.mongodb.net/?retryWrites=true&w=majority")
  
     # other configs
     BOT_UPTIME  = time.time()
     START_PIC   = os.environ.get("START_PIC", "")
-    ADMIN = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '').split()]
+    ADMIN = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '2021408974').split()]
 
     # channels logs
     FORCE_SUB   = os.environ.get("FORCE_SUB", "") 
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", ""))
 
     # wes response configuration     
-    WEBHOOK = bool(os.environ.get("WEBHOOK", True))
+    WEBHOOK = bool(os.environ.get("WEBHOOK", False))
 
 
 
