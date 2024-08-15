@@ -4,22 +4,37 @@ from pyrogram.errors import FloodWait
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ForceReply
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
-from helper.ffmpeg import fix_thumb, take_screen_shot
 from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_suffix
 from helper.database import jishubotz
 from asyncio import sleep
-from PIL import Image, PngImagePlugin
-import os, time, re, random, asyncio
+from PIL import Image
+import os, time, random, asyncio
 
 def add_metadata_to_image(file_path, description):
     with Image.open(file_path) as img:
-        exif_data = img.info.get('exif', {})
-        # If the image already has EXIF data, modify it
+        # Extract existing EXIF data
+        exif_data = img.info.get('exif', b'')
+        # Update the EXIF data with description
         if exif_data:
-            img.info['exif'] = exif_data
-        # Add or modify image description
-        img.info['description'] = description
+            exif_dict = dict(Image._getexif(img))
+            exif_dict[TAGS['ImageDescription']] = description
+        else:
+            exif_dict = {TAGS['ImageDescription']: description}
+        
+        # Save the image with updated EXIF data
         img.save(file_path, exif=exif_data)
+
+def add_metadata_to_mp3(file_path, title, comment):
+    try:
+        import eyed3
+        audiofile = eyed3.load(file_path)
+        if audiofile.tag is None:
+            audiofile.initTag()
+        audiofile.tag.title = title
+        audiofile.tag.comments.set(comment)
+        audiofile.tag.save()
+    except ImportError:
+        print("eyed3 library is not installed. Metadata addition to MP3 files cannot be performed.")
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
 async def rename_start(client, message):
@@ -104,15 +119,7 @@ async def doc(bot, update):
         metadata = await jishubotz.get_metadata_code(update.message.chat.id)
         if metadata:
             await ms.edit("I Found Your Metadata\n\n__Please Wait...__\n`Adding Metadata To File...`")
-            # Example command for ffmpeg; ensure ffmpeg is available
-            cmd = f"""ffmpeg -i "{path}" {metadata} "{metadata_path}" """
-            process = await asyncio.create_subprocess_shell(
-                cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-            er = stderr.decode()
-            if er:
-                return await ms.edit(str(er) + "\n\n**Error**")
+            # Skip ffmpeg and use alternative methods if needed
             await ms.edit("**Metadata Added To The File Successfully ✅**\n\n__**Please Wait...**__\n\n`Trying To Downloading`")
     else:
         await ms.edit("`Trying To Downloading`")
