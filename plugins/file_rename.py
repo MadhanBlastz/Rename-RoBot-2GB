@@ -8,31 +8,18 @@ from helper.ffmpeg import fix_thumb, take_screen_shot
 from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_suffix
 from helper.database import jishubotz
 from asyncio import sleep
-from PIL import Image
-from mutagen.id3 import ID3, ID3NoHeaderError, TIT2, COMM
+from PIL import Image, PngImagePlugin
 import os, time, re, random, asyncio
 
-
-def add_metadata_to_mp3(file_path, new_name):
-    try:
-        audio = ID3(file_path)
-    except ID3NoHeaderError:
-        audio = ID3()
-    
-    audio["TIT2"] = TIT2(encoding=3, text=new_name)
-    audio["COMM"] = COMM(encoding=3, lang="eng", desc="Comment", text="Processed by @AniMovieRulz")
-    audio.save(file_path)
-
-
-def add_metadata_to_image(file_path):
+def add_metadata_to_image(file_path, description):
     with Image.open(file_path) as img:
         exif_data = img.info.get('exif', {})
-        if 'ImageDescription' in img.info:
-            exif_data['ImageDescription'] = 'Processed by @AniMovieRulz'
-        else:
-            exif_data['ImageDescription'] = 'Processed by @AniMovieRulz'
+        # If the image already has EXIF data, modify it
+        if exif_data:
+            img.info['exif'] = exif_data
+        # Add or modify image description
+        img.info['description'] = description
         img.save(file_path, exif=exif_data)
-
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
 async def rename_start(client, message):
@@ -57,7 +44,6 @@ async def rename_start(client, message):
         )
     except:
         pass
-
 
 @Client.on_message(filters.private & filters.reply)
 async def refunc(client, message):
@@ -87,12 +73,11 @@ async def refunc(client, message):
             reply_markup=InlineKeyboardMarkup(button)
         )
 
-
 @Client.on_callback_query(filters.regex("upload"))
 async def doc(bot, update):
     if not os.path.isdir("Metadata"):
         os.mkdir("Metadata")
-    
+
     prefix = await jishubotz.get_prefix(update.message.chat.id)
     suffix = await jishubotz.get_suffix(update.message.chat.id)
     new_name = update.message.text
@@ -102,7 +87,7 @@ async def doc(bot, update):
         new_filename = add_prefix_suffix(new_filename_, prefix, suffix)
     except Exception as e:
         return await update.message.edit(f"Something Went Wrong Can't Able To Set Prefix Or Suffix 🥺 \n\n**Contact My Creator :** @CallAdminRobot\n\n**Error :** `{e}`")
-    
+
     file_path = f"downloads/{update.from_user.id}/{new_filename}"
     file = update.message.reply_to_message
 
@@ -113,12 +98,13 @@ async def doc(bot, update):
         return await ms.edit(e)
 
     _bool_metadata = await jishubotz.get_metadata(update.message.chat.id)
-    
+
     if _bool_metadata:
         metadata_path = f"Metadata/{new_filename}"
         metadata = await jishubotz.get_metadata_code(update.message.chat.id)
         if metadata:
             await ms.edit("I Found Your Metadata\n\n__Please Wait...__\n`Adding Metadata To File...`")
+            # Example command for ffmpeg; ensure ffmpeg is available
             cmd = f"""ffmpeg -i "{path}" {metadata} "{metadata_path}" """
             process = await asyncio.create_subprocess_shell(
                 cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -129,7 +115,7 @@ async def doc(bot, update):
                 return await ms.edit(str(er) + "\n\n**Error**")
             await ms.edit("**Metadata Added To The File Successfully ✅**\n\n__**Please Wait...**__\n\n`Trying To Downloading`")
     else:
-        await ms.edit("`Trying To Downloading`") 
+        await ms.edit("`Trying To Downloading`")
 
     duration = 0
     try:
@@ -140,9 +126,9 @@ async def doc(bot, update):
         parser.close()
     except:
         pass
-    
+
     ph_path = None
-    user_id = int(update.message.chat.id) 
+    user_id = int(update.message.chat.id)
     media = getattr(file, file.media.value)
     c_caption = await jishubotz.get_caption(update.message.chat.id)
     c_thumb = await jishubotz.get_thumbnail(update.message.chat.id)
@@ -151,10 +137,10 @@ async def doc(bot, update):
         try:
             caption = c_caption.format(filename=new_filename, filesize=humanbytes(media.file_size), duration=convert(duration))
         except Exception as e:
-            return await ms.edit(text=f"Your Caption Error Except Keyword Argument: ({e})")             
+            return await ms.edit(text=f"Your Caption Error Except Keyword Argument: ({e})")
     else:
         caption = f"**{new_filename}**"
-    
+
     if (media.thumbs or c_thumb):
         if c_thumb:
             ph_path = await bot.download_media(c_thumb)
@@ -166,23 +152,23 @@ async def doc(bot, update):
             except Exception as e:
                 ph_path = None
                 print(e)
-    
+
     await ms.edit("`Trying To Uploading`")
     type = update.data.split("_")[1]
     try:
         if type == "document":
             await bot.send_document(
                 update.message.chat.id,
-                document=metadata_path if _bool_metadata else file_path,
-                thumb=ph_path, 
-                caption=caption, 
+                document=file_path,
+                thumb=ph_path,
+                caption=caption,
                 progress=progress_for_pyrogram,
                 progress_args=("`Upload Started....`", ms, time.time())
             )
         elif type == "video":
             await bot.send_video(
                 update.message.chat.id,
-                video=metadata_path if _bool_metadata else file_path,
+                video=file_path,
                 caption=caption,
                 thumb=ph_path,
                 duration=duration,
@@ -192,7 +178,7 @@ async def doc(bot, update):
         elif type == "audio":
             await bot.send_audio(
                 update.message.chat.id,
-                audio=metadata_path if _bool_metadata else file_path,
+                audio=file_path,
                 caption=caption,
                 thumb=ph_path,
                 duration=duration,
@@ -208,8 +194,8 @@ async def doc(bot, update):
         if path:
             os.remove(path)
         return await ms.edit(f"**Error :** `{e}`")
-    
-    await ms.delete() 
+
+    await ms.delete()
     if ph_path:
         os.remove(ph_path)
     if file_path:
