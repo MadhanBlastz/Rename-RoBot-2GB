@@ -107,14 +107,10 @@ async def doc(bot, update):
     file = update.message.reply_to_message
 
     ms = await update.message.edit("`Trying To Downloading`")
-
     try:
-        print(f"Downloading file to: {file_path}")
         path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("`Download Started....`", ms, time.time()))
-        print(f"File downloaded to: {path}")
     except Exception as e:
-        print(f"Download failed: {e}")
-        return await ms.edit(f"**Error during download:** `{e}`")
+        return await ms.edit(e)
 
     _bool_metadata = await jishubotz.get_metadata(update.message.chat.id)
 
