@@ -1,15 +1,14 @@
-FROM python:3.11-slim
+FROM jrottenberg/ffmpeg:4.3-alpine
 
-# Install ffmpeg
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
+# Install Python
+RUN apk add --no-cache python3 py3-pip
 
-# Set up your application
+# Copy your application code
 COPY . /app
 WORKDIR /app
 
 # Install Python dependencies
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
-CMD ["python", "bot.py"]
+# Run the bot
+CMD ["python3", "bot.py"]
