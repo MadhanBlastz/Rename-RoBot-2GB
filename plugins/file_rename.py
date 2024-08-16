@@ -92,27 +92,31 @@ async def doc(bot, update):
         return await ms.edit(f"**Error :** `{e}`")
     
     # Metadata Adding Code
-    _bool_metadata = await jishubotz.get_metadata(update.message.chat.id)  
-    
-    if _bool_metadata:
-        metadata_path = f"Metadata/{new_filename}"
-        metadata = await jishubotz.get_metadata_code(update.message.chat.id)
-        if metadata:
-            await ms.edit("I Found Your Metadata\n\n__Please Wait...__\n`Adding Metadata To File...`")
-            cmd = f"/data/data/com.termux/files/usr/bin/ffmpeg -i \"{path}\" {metadata} \"{metadata_path}\""
+_bool_metadata = await jishubotz.get_metadata(update.message.chat.id)  
 
-            process = await asyncio.create_subprocess_shell(
-                cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-            )
+if (_bool_metadata):
+    metadata_path = f"Metadata/{new_filename}"
+    metadata = await jishubotz.get_metadata_code(update.message.chat.id)
+    if metadata:
+        await ms.edit("I Found Your Metadata\n\n__Please Wait...__\n`Adding Metadata To File...`")
+        
+        # Ensure correct path to ffmpeg
+        cmd = f"""/data/data/com.termux/files/usr/bin/ffmpeg -i "{path}" {metadata} "{metadata_path}" """
+        
+        process = await asyncio.create_subprocess_shell(
+            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
 
-            stdout, stderr = await process.communicate()
-            er = stderr.decode()
+        stdout, stderr = await process.communicate()
+        er = stderr.decode()
 
-            if er:
-                return await ms.edit(f"**Metadata Error :** `{er}`")
-            await ms.edit("**Metadata Added To The File Successfully ✅**\n\n__**Please Wait...**__\n\n`Trying To Upload`")
-    else:
-        await ms.edit("`Trying To Upload`") 
+        if er:
+            return await ms.edit(str(er) + "\n\n**Error**")
+        
+    await ms.edit("**Metadata Added To The File Successfully ✅**\n\n__**Please Wait...**__\n\n`Trying To Downloading`")
+else:
+    await ms.edit("`Trying To Downloading`")
+
 
     duration = 0
     try:
