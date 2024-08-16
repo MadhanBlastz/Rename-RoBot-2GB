@@ -1,17 +1,15 @@
-import os
-import asyncio
-import time
 from pyrogram import Client, filters
+import time
 from pyrogram.enums import MessageMediaType
 from pyrogram.errors import FloodWait
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ForceReply
 from hachoir.metadata import extractMetadata
 from hachoir.parser import createParser
-from helper.ffmpeg import fix_thumb, take_screen_shot
 from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_suffix
 from helper.database import jishubotz
 from asyncio import sleep
 from PIL import Image
+import os, time, random, asyncio
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
 async def rename_start(client, message):
@@ -90,33 +88,32 @@ async def doc(bot, update):
         path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("`Download Started....`", ms, time.time()))                    
     except Exception as e:
         return await ms.edit(f"**Error :** `{e}`")
-    
+             
     # Metadata Adding Code
-_bool_metadata = await jishubotz.get_metadata(update.message.chat.id)  
+    _bool_metadata = await jishubotz.get_metadata(update.message.chat.id)  
+    
+    if (_bool_metadata):
+        metadata_path = f"Metadata/{new_filename}"
+        metadata = await jishubotz.get_metadata_code(update.message.chat.id)
+        if metadata:
+            await ms.edit("I Found Your Metadata\n\n__Please Wait...__\n`Adding Metadata To File...`")
+            
+            # Ensure correct path to ffmpeg
+            cmd = f"""/data/data/com.termux/files/usr/bin/ffmpeg -i "{path}" {metadata} "{metadata_path}" """
+            
+            process = await asyncio.create_subprocess_shell(
+                cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
 
-if (_bool_metadata):
-    metadata_path = f"Metadata/{new_filename}"
-    metadata = await jishubotz.get_metadata_code(update.message.chat.id)
-    if metadata:
-        await ms.edit("I Found Your Metadata\n\n__Please Wait...__\n`Adding Metadata To File...`")
-        
-        # Ensure correct path to ffmpeg
-        cmd = f"""/data/data/com.termux/files/usr/bin/ffmpeg -i "{path}" {metadata} "{metadata_path}" """
-        
-        process = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-        )
+            stdout, stderr = await process.communicate()
+            er = stderr.decode()
 
-        stdout, stderr = await process.communicate()
-        er = stderr.decode()
-
-        if er:
-            return await ms.edit(str(er) + "\n\n**Error**")
-        
-    await ms.edit("**Metadata Added To The File Successfully ✅**\n\n__**Please Wait...**__\n\n`Trying To Downloading`")
-else:
-    await ms.edit("`Trying To Downloading`")
-
+            if er:
+                return await ms.edit(str(er) + "\n\n**Error**")
+            
+        await ms.edit("**Metadata Added To The File Successfully ✅**\n\n__**Please Wait...**__\n\n`Trying To Downloading`")
+    else:
+        await ms.edit("`Trying To Downloading`") 
 
     duration = 0
     try:
@@ -142,7 +139,7 @@ else:
     else:
         caption = f"**{new_filename}**"
  
-    if media.thumbs or c_thumb:
+    if (media.thumbs or c_thumb):
         if c_thumb:
             ph_path = await bot.download_media(c_thumb)
             width, height, ph_path = await fix_thumb(ph_path)
@@ -154,7 +151,7 @@ else:
                 ph_path = None
                 print(e)  
 
-    await ms.edit("`Trying To Upload`")
+    await ms.edit("`Trying To Uploading`")
     type = update.data.split("_")[1]
     try:
         if type == "document":
@@ -185,6 +182,7 @@ else:
                 duration=duration,
                 progress=progress_for_pyrogram,
                 progress_args=("`Upload Started....`", ms, time.time()))
+
     except Exception as e:          
         os.remove(file_path)
         if ph_path:
@@ -202,4 +200,8 @@ else:
         os.remove(file_path)
     if metadata_path:
         os.remove(metadata_path)
-        
+
+# Jishu Developer 
+# Don't Remove Credit 🥺
+# Telegram Channel @JishuBotz
+# Developer @JishuDeveloper
