@@ -155,13 +155,19 @@ async def doc(bot, update):
     type = update.data.split("_")[1]
     try:
         if type == "document":
+            print("Preparing to upload file...")
+        try:
             await bot.send_document(
-                update.message.chat.id,
-                document=metadata_path if _bool_metadata else file_path,
-                thumb=ph_path, 
-                caption=caption, 
+                update.from_user.id,
+                document=metadata_path,
+                thumb=ph_path,
+                caption=caption,
                 progress=progress_for_pyrogram,
-                progress_args=("`Upload Started....`", ms, time.time()))
+                progress_args=("⚠️__**Please wait...**__\n🌨️ **Upload Started....**", ms, time.time()))
+            print("File uploaded successfully!")
+        except Exception as e:
+            print(f"Upload failed with error: {e}")
+            await ms.edit(f"Upload failed: {e}")
 
         elif type == "video": 
             await bot.send_video(
