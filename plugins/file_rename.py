@@ -18,9 +18,8 @@ async def rename(bot, update):
     user_id = update.data.split('-')[1]
     
     if int(user_id) not in [update.from_user.id, 0]:
-            return await update.answer(f"⚠️ Hᴇʏ {update.from_user.first_name}\nTʜɪs ɪs ɴᴏᴛ ʏᴏᴜʀ ғɪʟᴇ ʏᴏᴜ ᴄᴀɴ'ᴛ ᴅᴏ ᴀɴʏ ᴏᴘᴇʀᴀᴛɪᴏɴ", show_alert=True)
+        return await update.answer(f"⚠️ Hᴇʏ {update.from_user.first_name}\nTʜɪs ɪs ɴᴏᴛ ʏᴏᴜʀ ғɪʟᴇ ʏᴏᴜ ᴄᴀɴ'ᴛ ᴅᴏ ᴀɴʏ ᴏᴘᴇʀᴀᴛɪᴏɴ", show_alert=True)
 
-    date = update.message.date
     await update.message.delete()
     await update.message.reply_text("__𝙿𝚕𝚎𝚊𝚜𝚎 𝙴𝚗𝚝𝚎𝚛 𝙽𝚎𝚠 𝙵𝚒𝚕𝚎𝙽𝚊𝚖𝚎...__", reply_to_message_id=update.message.reply_to_message.id, reply_markup=ForceReply(True))
 
@@ -63,25 +62,25 @@ async def doc(bot, update):
         os.mkdir("Metadata")
 
     new_name = update.message.text
-    new_filename = new_name.split(":-")[1]
+    new_filename = new_name.split(":-")[1].strip()
     file_path = f"Renames/{new_filename}"
     metadata_path = f"Metadata/{new_filename}"
     file = update.message.reply_to_message
-    print(file_path)
 
     ms = await update.message.edit("⚠️__**Please wait...**__\n**Tʀyɪɴɢ Tᴏ Dᴏᴡɴʟᴏᴀᴅɪɴɢ....**")
     try:
         dl = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("\n⚠️__**Please wait...**__\n\n☃️ **Dᴏᴡɴʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....**", ms, time.time()))
     except Exception as e:
-        return await ms.edit(e)
+        return await ms.edit(f"Download failed: {e}")
 
     duration = 0
     try:
         metadata = extractMetadata(createParser(file_path))
         if metadata.has("duration"):
             duration = metadata.get('duration').seconds
-    except:
-        pass
+    except Exception as e:
+        return await ms.edit(f"Metadata extraction failed: {e}")
+        
     ph_path = None
     user_id = update.from_user.id
     media = getattr(file, file.media.value)
@@ -90,8 +89,7 @@ async def doc(bot, update):
 
     if c_caption:
         try:
-            caption = c_caption.format(filename=new_filename, filesize=humanbytes(
-                media.file_size), duration=convert(duration))
+            caption = c_caption.format(filename=new_filename, filesize=humanbytes(media.file_size), duration=convert(duration))
         except Exception as e:
             return await ms.edit(text=f"Yᴏᴜʀ Cᴀᴩᴛɪᴏɴ Eʀʀᴏʀ Exᴄᴇᴩᴛ Kᴇʏᴡᴏʀᴅ Aʀɢᴜᴍᴇɴᴛ ●> ({e})")
     else:
@@ -121,19 +119,14 @@ async def doc(bot, update):
         stdout, stderr = await process.communicate()
         er = stderr.decode()
 
-        try:
-            if er:
-                await ms.edit(str(er) + "\n\n**Error**")
-        except BaseException:
-            pass
+        if er:
+            return await ms.edit(f"FFmpeg error: {er}")
 
     # Validate the metadata file
     if os.path.exists(metadata_path):
         file_size = os.path.getsize(metadata_path)
-        print(f"File size: {file_size} bytes")
-
         if file_size > 0:
-            print("File seems valid. Proceeding to upload...")
+            await ms.edit(f"File size: {humanbytes(file_size)}\nFile is valid. Proceeding to upload...")
         else:
             return await ms.edit("Error: Metadata file is empty or corrupted.")
     else:
@@ -161,9 +154,10 @@ async def doc(bot, update):
                     await bot.send_video(
                         update.from_user.id,
                         video=metadata_path,
-                        caption=caption,
-                        thumb=ph_path,
                         duration=duration,
+                        thumb=ph_path,
+                        caption=caption,
+                        supports_streaming=True,
                         progress=progress_for_pyrogram,
                         progress_args=("⚠️__**Please wait...**__\n🌨️ **Upload Started....**", ms, time.time())
                     )
@@ -171,9 +165,9 @@ async def doc(bot, update):
                     await bot.send_audio(
                         update.from_user.id,
                         audio=metadata_path,
-                        caption=caption,
-                        thumb=ph_path,
                         duration=duration,
+                        thumb=ph_path,
+                        caption=caption,
                         progress=progress_for_pyrogram,
                         progress_args=("⚠️__**Please wait...**__\n🌨️ **Upload Started....**", ms, time.time())
                     )
